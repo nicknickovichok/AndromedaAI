@@ -117,7 +117,7 @@ def main(page: ft.Page):
             height=380,
         ),
         bgcolor=COLOR_PANEL,
-        border_radius=10,
+        shape=ft.RoundedRectangleBorder(radius=10),
     )
 
     def open_history_dialog(e):
