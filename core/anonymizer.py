@@ -1,5 +1,7 @@
 import socket
+
 import requests
+
 
 class NetworkAnonymizer:
     """
@@ -24,7 +26,7 @@ class NetworkAnonymizer:
             resp = requests.get("https://api.ipify.org", timeout=5)
             if resp.status_code == 200:
                 return resp.text.strip()
-        except Exception:
+        except requests.RequestException:
             pass
         return "Ошибка сети"
 
@@ -44,7 +46,7 @@ class NetworkAnonymizer:
             resp = requests.get("https://api.ipify.org", proxies=proxies, timeout=5)
             if resp.status_code == 200:
                 return resp.text.strip()
-        except Exception:
+        except requests.RequestException:
             pass
 
         # Fallback to standard socks5:// proxy format
@@ -56,7 +58,7 @@ class NetworkAnonymizer:
             resp = requests.get("https://api.ipify.org?format=json", proxies=proxies_direct, timeout=5)
             if resp.status_code == 200:
                 return resp.json().get("ip", resp.text.strip())
-        except Exception:
+        except requests.RequestException:
             pass
 
         return "Error: Tor Offline"
@@ -79,5 +81,5 @@ class NetworkAnonymizer:
                     signal_resp = s.recv(1024).decode('utf-8', errors='ignore')
                     return "250" in signal_resp
                 return False
-        except Exception:
+        except OSError:
             return False

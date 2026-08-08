@@ -1,6 +1,7 @@
-import sqlite3
 import os
-from typing import List
+import sqlite3
+from typing import Any
+
 
 class DatabaseManager:
     """
@@ -75,7 +76,7 @@ class DatabaseManager:
             )
             conn.commit()
 
-    def get_all_targets(self) -> List[str]:
+    def get_all_targets(self) -> list[str]:
         """
         Queries targets table and returns a simple list of host strings.
         Returns empty list [] if database is empty.
@@ -104,3 +105,55 @@ class DatabaseManager:
             )
             conn.commit()
             return cursor.lastrowid
+
+    def get_all_ai_logs(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Retrieves recent AI logs for Task History."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, step_name, raw_input, ai_output, timestamp FROM ai_logs ORDER BY id DESC LIMIT ?;",
+                (limit,)
+            )
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    def get_ai_log_by_id(self, log_id: int) -> dict[str, Any] | None:
+        """Retrieves a specific AI log entry by ID."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, step_name, raw_input, ai_output, timestamp FROM ai_logs WHERE id = ?;",
+                (log_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def add_recon_service(self, target_host: str, port: int, service: str, version: str = "", protocol: str = "tcp") -> None:
+        """Saves parsed service information for bruteforce/exploit mapping."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM targets WHERE host = ?;", (target_host,))
+            target_row = cursor.fetchone()
+            target_id = target_row["id"] if target_row else None
+            
+            cursor.execute(
+                """
+                INSERT INTO recon_data (target_id, port, protocol, service, version)
+                VALUES (?, ?, ?, ?, ?);
+                """,
+                (target_id or 0, port, protocol, service, version)
+            )
+            conn.commit()
+
+    def get_recon_services(self) -> list[dict[str, Any]]:
+        """Retrieves all parsed recon services."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT r.id, t.host, r.port, r.protocol, r.service, r.version, r.updated_at
+                FROM recon_data r
+                LEFT JOIN targets t ON r.target_id = t.id
+                ORDER BY r.id DESC;
+            """)
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
