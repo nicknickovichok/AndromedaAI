@@ -746,7 +746,7 @@ def main(page: ft.Page):
                     border_radius=10,
                     bgcolor="#2B210B",
                     border=ft.Border.all(1, COLOR_WARNING),
-                    alignment=ft.alignment.center,
+                    alignment=ft.Alignment(0, 0),
                 )
             )
         else:
