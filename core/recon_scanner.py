@@ -6,18 +6,17 @@ import subprocess
 class ReconScanner:
     """
     Reconnaissance Scanner for AndromedaAI.
-    Executes Nmap, Nikto, and Gobuster scans (with optional Proxychains wrapper)
-    and performs AI micro-step port analysis.
+    Executes Nmap, Nikto, and Gobuster scans (with optional Proxychains wrapper
+    and custom flags) and performs AI micro-step port analysis.
     """
 
     def __init__(self):
         pass
 
-    def run_nmap_scan(self, target_host: str, use_proxychains: bool = False) -> str:
+    def run_nmap_scan(self, target_host: str, use_proxychains: bool = False, custom_args: str = "") -> str:
         """
-        Executes Nmap scan against target_host.
+        Executes Nmap scan against target_host with optional custom args.
         Wraps in proxychains4 if use_proxychains is True.
-        Returns raw stdout/stderr output from Nmap.
         """
         target_host = target_host.strip()
         if not target_host:
@@ -25,10 +24,11 @@ class ReconScanner:
 
         nmap_path = shutil.which("nmap")
         if not nmap_path:
+            extra = f" (Опции: {custom_args})" if custom_args else ""
             return (
-                f"[!] Nmap execution simulated for target: {target_host}\n"
+                f"[!] Nmap execution simulated for target: {target_host}{extra}\n"
                 "[!] Note: 'nmap' binary was not found in system PATH.\n\n"
-                f"Starting Nmap 7.94 ( https://nmap.org ) at 2026-08-08 13:30\n"
+                f"Starting Nmap 7.94 ( https://nmap.org ) at 2026-08-09 10:35\n"
                 f"Nmap scan report for {target_host}\n"
                 "Host is up (0.012s latency).\n"
                 "Not shown: 98 closed tcp ports (reset)\n"
@@ -42,7 +42,6 @@ class ReconScanner:
             )
 
         cmd_parts = []
-
         if use_proxychains:
             proxychains_bin = shutil.which("proxychains4") or shutil.which("proxychains")
             if proxychains_bin:
@@ -50,14 +49,19 @@ class ReconScanner:
             else:
                 return "[!] Error: 'proxychains' binary not found on host system."
 
-        cmd_parts.extend([nmap_path, "-sV", "-F", target_host])
+        cmd_parts.append(nmap_path)
+        if custom_args.strip():
+            cmd_parts.extend(custom_args.strip().split())
+        else:
+            cmd_parts.extend(["-sV", "-F"])
+        cmd_parts.append(target_host)
 
         try:
             result = subprocess.run(
                 cmd_parts,
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=180,
                 check=False
             )
             output = result.stdout
@@ -65,11 +69,11 @@ class ReconScanner:
                 output += "\n" + result.stderr
             return output.strip() if output.strip() else "[!] Nmap returned empty output."
         except subprocess.TimeoutExpired:
-            return f"[!] Error: Nmap scan timed out for target '{target_host}' (120s limit)."
+            return f"[!] Error: Nmap scan timed out for target '{target_host}' (180s limit)."
         except (OSError, RuntimeError) as e:
             return f"[!] Error executing Nmap scan: {e!s}"
 
-    def run_nikto_scan(self, target_host: str, use_proxychains: bool = False) -> str:
+    def run_nikto_scan(self, target_host: str, use_proxychains: bool = False, custom_args: str = "") -> str:
         """
         Executes Nikto Web Vulnerability Scanner against target_host.
         """
@@ -79,8 +83,9 @@ class ReconScanner:
 
         nikto_path = shutil.which("nikto")
         if not nikto_path:
+            extra = f" (Опции: {custom_args})" if custom_args else ""
             return (
-                f"[!] Nikto execution simulated for target: {target_host}\n"
+                f"[!] Nikto execution simulated for target: {target_host}{extra}\n"
                 "[!] Note: 'nikto' binary was not found in system PATH.\n\n"
                 f"- Nikto v2.5.0\n"
                 f"+ Target IP: {target_host}\n"
@@ -101,7 +106,11 @@ class ReconScanner:
             if proxychains_bin:
                 cmd_parts.extend([proxychains_bin, "-q"])
 
-        cmd_parts.extend([nikto_path, "-h", target_host, "-Tuning", "123b"])
+        cmd_parts.extend([nikto_path, "-h", target_host])
+        if custom_args.strip():
+            cmd_parts.extend(custom_args.strip().split())
+        else:
+            cmd_parts.extend(["-Tuning", "123b"])
 
         try:
             result = subprocess.run(
@@ -120,7 +129,7 @@ class ReconScanner:
         except (OSError, RuntimeError) as e:
             return f"[!] Error executing Nikto scan: {e!s}"
 
-    def run_gobuster_scan(self, target_host: str, use_proxychains: bool = False) -> str:
+    def run_gobuster_scan(self, target_host: str, use_proxychains: bool = False, custom_args: str = "") -> str:
         """
         Executes Gobuster directory brute-force scan against target_host.
         """
@@ -132,8 +141,9 @@ class ReconScanner:
         gobuster_path = shutil.which("gobuster")
 
         if not gobuster_path:
+            extra = f" (Опции: {custom_args})" if custom_args else ""
             return (
-                f"[!] Gobuster execution simulated for target: {url}\n"
+                f"[!] Gobuster execution simulated for target: {url}{extra}\n"
                 "[!] Note: 'gobuster' binary was not found in system PATH.\n\n"
                 f"===============================================================\n"
                 f"Gobuster v3.6\n"
@@ -159,7 +169,11 @@ class ReconScanner:
             if proxychains_bin:
                 cmd_parts.extend([proxychains_bin, "-q"])
 
-        cmd_parts.extend([gobuster_path, "dir", "-u", url, "-w", "/usr/share/wordlists/dirb/common.txt", "-q"])
+        cmd_parts.extend([gobuster_path, "dir", "-u", url])
+        if custom_args.strip():
+            cmd_parts.extend(custom_args.strip().split())
+        else:
+            cmd_parts.extend(["-w", "/usr/share/wordlists/dirb/common.txt", "-q"])
 
         try:
             result = subprocess.run(
